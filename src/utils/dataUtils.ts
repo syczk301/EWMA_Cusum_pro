@@ -161,22 +161,23 @@ export const readExcelFile = (file: File): Promise<ExcelReadResult> => {
               unit = '单位';
             }
             
-            // 根据变量名生成标准化的ID
+            // 根据变量名生成唯一的ID，使用列索引确保唯一性
             let variableId = '';
             const lowerNameForId = variableName.toLowerCase();
             if (lowerNameForId.includes('厚度') || lowerNameForId.includes('thickness')) {
-              variableId = 'thickness';
+              variableId = `thickness_${index}`;
             } else if (lowerNameForId.includes('水分') || lowerNameForId.includes('moisture')) {
-              variableId = 'moisture';
+              variableId = `moisture_${index}`;
             } else if (lowerNameForId.includes('强度') || lowerNameForId.includes('strength') || lowerNameForId.includes('tensile')) {
-              variableId = 'tensile_strength';
+              variableId = `tensile_strength_${index}`;
             } else if (lowerNameForId.includes('白度') || lowerNameForId.includes('brightness')) {
-              variableId = 'brightness';
+              variableId = `brightness_${index}`;
             } else if (lowerNameForId.includes('平滑度') || lowerNameForId.includes('smoothness')) {
-              variableId = 'smoothness';
+              variableId = `smoothness_${index}`;
             } else {
-              // 对于其他变量，生成基于名称的ID
-              variableId = variableName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+              // 对于其他变量，生成基于名称和列索引的唯一ID
+              const baseName = variableName.toLowerCase().replace(/[^a-z0-9]/g, '_');
+              variableId = `${baseName}_${index}`;
             }
             
             variables.push({

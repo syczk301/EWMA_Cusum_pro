@@ -58,43 +58,7 @@ export const useDataStore = create<DataState>((set, get) => ({
   processedData: [],
   selectedDataset: null,
   uploadedFile: null,
-  availableVariables: [
-    {
-      id: 'thickness',
-      name: '厚度',
-      description: '成纸厚度测量值',
-      unit: 'mm',
-      type: 'continuous'
-    },
-    {
-      id: 'moisture',
-      name: '水分含量',
-      description: '成纸水分含量百分比',
-      unit: '%',
-      type: 'continuous'
-    },
-    {
-      id: 'tensile_strength',
-      name: '抗张强度',
-      description: '成纸抗张强度测量值',
-      unit: 'N·m/g',
-      type: 'continuous'
-    },
-    {
-      id: 'brightness',
-      name: '白度',
-      description: '成纸白度测量值',
-      unit: '%ISO',
-      type: 'continuous'
-    },
-    {
-      id: 'smoothness',
-      name: '平滑度',
-      description: '成纸表面平滑度',
-      unit: 'ml/min',
-      type: 'continuous'
-    }
-  ],
+  availableVariables: [],
   selectedVariable: null,
   statistics: null,
   ewmaResults: null,

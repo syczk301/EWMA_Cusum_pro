@@ -65,9 +65,10 @@ const DataManagement: React.FC = () => {
       const mergedVariables = [...updatedVariables, ...newVariables];
       setAvailableVariables(mergedVariables);
       
-      // 如果有新识别的变量，选择第一个作为默认变量
-      if (result.variables.length > 0) {
-        setSelectedVariable(result.variables[0]);
+      // 不自动选择变量，让用户手动选择
+      // 如果之前有选中的变量且仍然存在，保持选中状态
+      if (selectedVariable && !mergedVariables.find(v => v.id === selectedVariable.id)) {
+        setSelectedVariable(null);
       }
       
       // 转换为本地显示格式
@@ -217,38 +218,38 @@ const DataManagement: React.FC = () => {
     setFilteredData([]);
     setRawData([]);
     
-    // 重置为默认的5个变量
+    // 重置为默认的5个变量，使用唯一ID避免冲突
     const defaultVariables = [
       {
-        id: 'thickness',
+        id: 'default_thickness',
         name: '厚度',
         description: '成纸厚度测量值',
         unit: 'mm',
         type: 'continuous' as const
       },
       {
-        id: 'moisture',
+        id: 'default_moisture',
         name: '水分含量',
         description: '成纸水分含量百分比',
         unit: '%',
         type: 'continuous' as const
       },
       {
-        id: 'tensile_strength',
+        id: 'default_tensile_strength',
         name: '抗张强度',
         description: '成纸抗张强度测量值',
         unit: 'N·m/g',
         type: 'continuous' as const
       },
       {
-        id: 'brightness',
+        id: 'default_brightness',
         name: '白度',
         description: '成纸白度测量值',
         unit: '%ISO',
         type: 'continuous' as const
       },
       {
-        id: 'smoothness',
+        id: 'default_smoothness',
         name: '平滑度',
         description: '成纸表面平滑度',
         unit: 'ml/min',

@@ -424,20 +424,29 @@ const CUSUMChart: React.FC = () => {
                     <h3 className="font-medium text-gray-900">选择分析变量</h3>
                   </div>
                   <div className="max-h-60 overflow-y-auto">
-                    {availableVariables.map((variable) => (
-                      <button
-                        key={variable.id}
-                        onClick={() => handleVariableChange(variable)}
-                        className={cn(
-                          "w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0",
-                          selectedVariable?.id === variable.id && "bg-blue-50 text-blue-700"
-                        )}
-                      >
-                        <div className="font-medium">{variable.name}</div>
-                        <div className="text-sm text-gray-500">{variable.description}</div>
-                        <div className="text-xs text-gray-400 mt-1">单位: {variable.unit}</div>
-                      </button>
-                    ))}
+                    {availableVariables.filter(variable => 'columnIndex' in variable && variable.columnIndex !== undefined).length > 0 ? (
+                      availableVariables
+                        .filter(variable => 'columnIndex' in variable && variable.columnIndex !== undefined)
+                        .map((variable) => (
+                        <button
+                          key={variable.id}
+                          onClick={() => handleVariableChange(variable)}
+                          className={cn(
+                            "w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0",
+                            selectedVariable?.id === variable.id && "bg-blue-50 text-blue-700"
+                          )}
+                        >
+                          <div className="font-medium">{variable.name}</div>
+                          <div className="text-sm text-gray-500">{variable.description}</div>
+                          <div className="text-xs text-gray-400 mt-1">单位: {variable.unit} | 列: {(variable as any).columnIndex + 1}</div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-6 text-center text-gray-500">
+                        <div className="text-sm">暂无可用变量</div>
+                        <div className="text-xs mt-1">请先在数据管理页面上传Excel文件</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

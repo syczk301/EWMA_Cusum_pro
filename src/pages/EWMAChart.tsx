@@ -69,6 +69,12 @@ const EWMAChart: React.FC = () => {
 
   // 处理变量选择
   const handleVariableChange = async (variable: Variable) => {
+    // 防止重复选择同一个变量
+    if (selectedVariable?.id === variable.id) {
+      setShowVariableSelector(false);
+      return;
+    }
+    
     setSelectedVariable(variable);
     setShowVariableSelector(false);
     
@@ -130,26 +136,12 @@ const EWMAChart: React.FC = () => {
         } catch (error) {
           console.error('加载变量数据失败:', error);
         }
-      } else if (storeRawData.length > 0 && !useRealData) {
-        const values = storeRawData.map(point => point.value);
-        setRawData(values);
-        setUseRealData(true);
-        
-        // 自动设置参数
-        const mean = values.reduce((sum, val) => sum + val, 0) / values.length;
-        const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length;
-        const stdDev = Math.sqrt(variance);
-        
-        setParams(prev => ({
-          ...prev,
-          target: parseFloat(mean.toFixed(2)),
-          sigma: parseFloat(stdDev.toFixed(2))
-        }));
       }
+      // 移除自动使用storeRawData的逻辑，避免自动选择变量
     };
     
     loadDataForSelectedVariable();
-  }, [storeRawData, useRealData, selectedVariable, storeUploadedFile]);
+  }, [selectedVariable, storeUploadedFile]); // 移除storeRawData和useRealData依赖
   
   // 生成模拟数据作为后备
   useEffect(() => {
@@ -487,7 +479,7 @@ const EWMAChart: React.FC = () => {
                 )}
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                选择变量
+                {selectedVariable ? selectedVariable.name : "选择变量"}
               </button>
               
               {showVariableSelector && (
@@ -496,20 +488,33 @@ const EWMAChart: React.FC = () => {
                     <h3 className="font-medium text-gray-900">选择分析变量</h3>
                   </div>
                   <div className="max-h-60 overflow-y-auto">
-                    {availableVariables.map((variable) => (
-                      <button
-                        key={variable.id}
-                        onClick={() => handleVariableChange(variable)}
-                        className={cn(
-                          "w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0",
-                          selectedVariable?.id === variable.id && "bg-blue-50 text-blue-700"
-                        )}
-                      >
-                        <div className="font-medium">{variable.name}</div>
-                        <div className="text-sm text-gray-500">{variable.description}</div>
-                        <div className="text-xs text-gray-400 mt-1">单位: {variable.unit}</div>
-                      </button>
-                    ))}
+                    {availableVariables.filter(variable => 'columnIndex' in variable && variable.columnIndex !== undefined).length > 0 ? (
+                      availableVariables
+                        .filter(variable => 'columnIndex' in variable && variable.columnIndex !== undefined)
+                        .map((variable) => (
+                        <button
+                          key={variable.id}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            handleVariableChange(variable);
+                          }}
+                          className={cn(
+                            "w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors border-b border-gray-100 last:border-b-0",
+                            selectedVariable?.id === variable.id && "bg-blue-50 text-blue-700"
+                          )}
+                        >
+                          <div className="font-medium">{variable.name}</div>
+                          <div className="text-sm text-gray-500">{variable.description}</div>
+                          <div className="text-xs text-gray-400 mt-1">单位: {variable.unit} | 列: {(variable as any).columnIndex + 1}</div>
+                        </button>
+                      ))
+                    ) : (
+                      <div className="px-4 py-6 text-center text-gray-500">
+                        <div className="text-sm">暂无可用变量</div>
+                        <div className="text-xs mt-1">请先在数据管理页面上传Excel文件</div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
@@ -1000,7 +1005,7 @@ const EWMAChart: React.FC = () => {
                 dataKey="value"
                 stroke="#9ca3af"
                 strokeWidth={1.5}
-                dot={{ r: 1.5, fill: '#9ca3af', strokeWidth: 0 }}
+                dot={false}
                 name="原始数据"
                 opacity={0.7}
               />
@@ -1012,7 +1017,21 @@ const EWMAChart: React.FC = () => {
                 stroke="#2563eb"
                 strokeWidth={3}
                 dot={(props: any) => {
-                  const { cx, cy, payload } = props;
+                  const { cx, cy, payload, index } = props;
+                  if (!payload) return null;
+                  
+                  // 只在以下情况显示数据点：
+                  // 1. 异常点（超出控制限或违反规则）
+                  // 2. 每10个点显示一个（减少密度）
+                  // 3. 重要的sigma级别点（>2σ）
+                  const shouldShowDot = 
+                    payload.isOutOfControl || 
+                    payload.violationRules.length > 0 || 
+                    index % 10 === 0 || 
+                    payload.sigmaLevel > 2;
+                  
+                  if (!shouldShowDot) return null;
+                  
                   let fillColor = '#2563eb';
                   let strokeColor = '#1d4ed8';
                   let radius = 2;
@@ -1028,6 +1047,7 @@ const EWMAChart: React.FC = () => {
                   } else if (payload.sigmaLevel > 1) {
                     fillColor = '#10b981';
                     strokeColor = '#059669';
+                    radius = 2;
                   }
                   
                   return (
