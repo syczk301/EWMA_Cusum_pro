@@ -238,6 +238,42 @@ const EWMAChart: React.FC = () => {
     return Math.abs(ewma - target) / sigma;
   };
 
+  // 计算智能Y轴范围
+  const calculateYAxisDomain = (data: DataPoint[]) => {
+    if (data.length === 0) return ['dataMin - 5', 'dataMax + 5'];
+    
+    const allValues = data.flatMap(d => [d.value, d.ewma, d.ucl, d.lcl]);
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    const range = maxValue - minValue;
+    
+    // 根据数据范围动态调整边距
+    let padding;
+    if (range < 1) {
+      // 小数据范围，使用较大的相对边距
+      padding = range * 0.3;
+    } else if (range < 10) {
+      // 中等数据范围
+      padding = range * 0.2;
+    } else {
+      // 大数据范围，使用较小的相对边距
+      padding = range * 0.1;
+    }
+    
+    // 确保最小边距
+    padding = Math.max(padding, range * 0.05);
+    
+    return [minValue - padding, maxValue + padding];
+  };
+
+  // 计算智能X轴刻度间隔
+  const calculateXAxisInterval = (dataLength: number) => {
+    if (dataLength <= 20) return 0; // 显示所有刻度
+    if (dataLength <= 50) return Math.floor(dataLength / 10);
+    if (dataLength <= 100) return Math.floor(dataLength / 15);
+    return Math.floor(dataLength / 20);
+  };
+
   // 计算EWMA值和控制限
   const chartData = useMemo(() => {
     if (rawData.length === 0) return [];
@@ -286,6 +322,28 @@ const EWMAChart: React.FC = () => {
 
     return data;
   }, [rawData, params]);
+
+  // 计算自适应显示参数
+  const adaptiveParams = useMemo(() => {
+    const yDomain = calculateYAxisDomain(chartData);
+    const xInterval = calculateXAxisInterval(chartData.length);
+    
+    // 根据数据密度调整数据点显示
+    let dotInterval;
+    if (chartData.length <= 50) {
+      dotInterval = 1; // 显示所有点
+    } else if (chartData.length <= 100) {
+      dotInterval = 3; // 每3个点显示一个
+    } else {
+      dotInterval = 5; // 每5个点显示一个
+    }
+    
+    return {
+      yDomain,
+      xInterval,
+      dotInterval
+    };
+  }, [chartData]);
 
   // 异常点检测
   const outOfControlPoints = useMemo(() => {
@@ -692,9 +750,9 @@ const EWMAChart: React.FC = () => {
         
 
         
-        <div className="h-96">
+        <div className={`${chartData.length > 100 ? 'h-[600px]' : chartData.length > 50 ? 'h-[550px]' : 'h-[500px]'}`}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 40, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               
               <XAxis 
@@ -703,13 +761,25 @@ const EWMAChart: React.FC = () => {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                interval={adaptiveParams.xInterval}
               />
               <YAxis 
                 stroke="#6b7280"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => value.toFixed(1)}
+                tickFormatter={(value) => {
+                  // 根据数值范围智能格式化
+                  const range = adaptiveParams.yDomain[1] - adaptiveParams.yDomain[0];
+                  if (range < 1) {
+                    return value.toFixed(3);
+                  } else if (range < 10) {
+                    return value.toFixed(2);
+                  } else {
+                    return value.toFixed(1);
+                  }
+                }}
+                domain={adaptiveParams.yDomain}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
@@ -780,8 +850,9 @@ const EWMAChart: React.FC = () => {
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#3b82f6"
-                strokeWidth={1}
+                stroke="#94a3b8"
+                strokeWidth={chartData.length > 100 ? 0.8 : 1}
+                strokeOpacity={chartData.length > 100 ? 0.4 : chartData.length > 50 ? 0.5 : 0.6}
                 dot={false}
                 name="原始数据"
               />
@@ -792,7 +863,19 @@ const EWMAChart: React.FC = () => {
                 dataKey="ewma"
                 stroke="#dc2626"
                 strokeWidth={2}
-                dot={{ r: 2, fill: "#dc2626" }}
+                dot={(props) => {
+                  const { index } = props;
+                  // 使用自适应的点间隔或异常点显示数据点
+                  const shouldShowDot = index % adaptiveParams.dotInterval === 0 || 
+                    outOfControlPoints.some(point => point.index === index + 1);
+                  
+                  // 根据数据密度调整点的大小
+                  const dotSize = chartData.length > 100 ? 2 : 3;
+                  
+                  return shouldShowDot ? 
+                    <circle cx={props.cx} cy={props.cy} r={dotSize} fill="#dc2626" stroke="#fff" strokeWidth={1} /> : 
+                    null;
+                }}
                 name="EWMA值"
               />
             </LineChart>
