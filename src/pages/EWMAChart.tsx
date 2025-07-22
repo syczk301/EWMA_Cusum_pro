@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ReferenceLine, ReferenceArea } from 'recharts';
-import { Settings, AlertTriangle, TrendingUp, Download, BarChart3, Target, Activity, Zap, Award } from 'lucide-react';
+import { Settings, AlertTriangle, TrendingUp, TrendingDown, Download, BarChart3, Activity, Target, Zap, ChevronUp, ChevronDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '../lib/utils';
 import { useDataStore, Variable } from '../store/dataStore';
@@ -64,7 +64,29 @@ const EWMAChart: React.FC = () => {
   const [useRealData, setUseRealData] = useState(false);
   const [showCapabilityAnalysis, setShowCapabilityAnalysis] = useState(false);
   const [showControlRules, setShowControlRules] = useState(false);
-  const [showChartLegend, setShowChartLegend] = useState(false);
+  const [showChartLegend, setShowChartLegend] = useState(true);
+  const [showProcessCapability, setShowProcessCapability] = useState(true);
+  const [showAnomalyResults, setShowAnomalyResults] = useState(true);
+
+  // 自动设置参数函数
+  const autoSetParams = () => {
+    if (rawData.length === 0) {
+      toast.error('没有可用数据进行参数设置');
+      return;
+    }
+    
+    const mean = rawData.reduce((sum, val) => sum + val, 0) / rawData.length;
+    const variance = rawData.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / (rawData.length - 1);
+    const stdDev = Math.sqrt(variance);
+    
+    setParams(prev => ({
+      ...prev,
+      target: parseFloat(mean.toFixed(2)),
+      sigma: parseFloat(stdDev.toFixed(2))
+    }));
+    
+    toast.success('参数已自动设置');
+  };
 
   // 处理变量选择
   const handleVariableChange = async (variable: Variable) => {
@@ -515,7 +537,7 @@ const EWMAChart: React.FC = () => {
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4">EWMA参数配置</h2>
           
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 λ (平滑常数): {params.lambda}
@@ -536,12 +558,13 @@ const EWMAChart: React.FC = () => {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">目标值</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">目标值 (μ₀)</label>
               <input
                 type="number"
                 value={params.target}
                 onChange={(e) => handleParamChange('target', parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5b9bd5] focus:border-transparent"
+                step="0.1"
               />
             </div>
             
@@ -552,6 +575,8 @@ const EWMAChart: React.FC = () => {
                 value={params.sigma}
                 onChange={(e) => handleParamChange('sigma', parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5b9bd5] focus:border-transparent"
+                step="0.1"
+                min="0.1"
               />
             </div>
             
@@ -562,112 +587,83 @@ const EWMAChart: React.FC = () => {
                 value={params.L}
                 onChange={(e) => handleParamChange('L', parseFloat(e.target.value) || 0)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5b9bd5] focus:border-transparent"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">子组大小</label>
-              <input
-                type="number"
-                min="1"
-                value={params.subgroupSize}
-                onChange={(e) => handleParamChange('subgroupSize', parseInt(e.target.value) || 1)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#5b9bd5] focus:border-transparent"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                置信水平 (%): {params.confidenceLevel}
-              </label>
-              <input
-                type="range"
-                min="90"
-                max="99.9"
                 step="0.1"
-                value={params.confidenceLevel}
-                onChange={(e) => handleParamChange('confidenceLevel', parseFloat(e.target.value))}
-                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
+                min="0.1"
               />
-              <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>90%</span>
-                <span>99.9%</span>
-              </div>
             </div>
           </div>
           
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <h3 className="font-medium text-blue-900 mb-2">EWMA参数说明</h3>
-              <ul className="text-sm text-blue-800 space-y-1">
-                <li>• λ值越小，对历史数据的权重越大，图表越平滑</li>
-                <li>• λ值越大，对当前数据的权重越大，响应越敏感</li>
-                <li>• 建议λ值在0.05-0.3之间，常用值为0.2</li>
-                <li>• L值通常取3，对应99.7%的置信区间</li>
-              </ul>
-            </div>
+          <div className="mt-4 flex items-center space-x-4 flex-wrap gap-2">
+            <button
+              onClick={autoSetParams}
+              className="px-4 py-2 bg-[#1f4e79] text-white rounded-lg hover:bg-[#1a4066] transition-colors flex items-center"
+            >
+              <Settings className="w-4 h-4 mr-2" />
+              自动设置参数
+            </button>
             
-            <div className="p-4 bg-green-50 rounded-lg">
-              <h3 className="font-medium text-green-900 mb-2">控制限说明</h3>
-              <ul className="text-sm text-green-800 space-y-1">
-                <li>• 控制限随时间变化，初期较宽，后期趋于稳定</li>
-                <li>• 置信水平决定控制限的宽度</li>
-                <li>• 99.7%置信水平对应3σ控制限</li>
-                <li>• 子组大小影响控制限的计算</li>
-              </ul>
-            </div>
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={showControlRules}
+                onChange={(e) => setShowControlRules(e.target.checked)}
+                className="mr-2 rounded"
+              />
+              <span className="text-sm text-gray-700">显示控制规则</span>
+            </label>
+            
+            <label className="flex items-center">
+              <input
+                type="checkbox"
+                checked={autoDetect}
+                onChange={(e) => setAutoDetect(e.target.checked)}
+                className="mr-2 rounded"
+              />
+              <span className="text-sm text-gray-700">自动检测异常</span>
+            </label>
           </div>
         </div>
       )}
 
       {/* 统计信息 */}
       {statistics && (
-        <div className="space-y-6">
-          {/* 基础统计指标 */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-blue-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{statistics.ewmaMean}</div>
-                  <div className="text-sm text-gray-600">EWMA均值</div>
-                  <div className="text-xs text-gray-500 mt-1">原始均值: {statistics.originalMean}</div>
-                </div>
-                <TrendingUp className="h-8 w-8 text-blue-600" />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <TrendingUp className="h-8 w-8 text-blue-600 mr-3" />
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{statistics.ewmaMean}</div>
+                <div className="text-sm text-gray-600">EWMA均值</div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-green-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{statistics.ewmaStdDev}</div>
-                  <div className="text-sm text-gray-600">EWMA标准差</div>
-                  <div className="text-xs text-gray-500 mt-1">原始标准差: {statistics.originalStdDev}</div>
-                </div>
-                <div className="h-8 w-8 bg-green-100 rounded-full flex items-center justify-center">
-                  <span className="text-green-600 font-bold text-sm">σ</span>
-                </div>
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <TrendingDown className="h-8 w-8 text-green-600 mr-3" />
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{statistics.ewmaStdDev}</div>
+                <div className="text-sm text-gray-600">EWMA标准差</div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-red-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{statistics.totalViolations}</div>
-                  <div className="text-sm text-gray-600">异常点总数</div>
-                  <div className="text-xs text-gray-500 mt-1">失控率: {statistics.outOfControlRate}%</div>
-                </div>
-                <AlertTriangle className="h-8 w-8 text-red-600" />
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <AlertTriangle className="h-8 w-8 text-red-600 mr-3" />
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{statistics.totalViolations}</div>
+                <div className="text-sm text-gray-600">异常点总数</div>
               </div>
             </div>
-            
-            <div className="bg-white rounded-lg shadow-sm p-6 border-l-4 border-purple-500">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-2xl font-bold text-gray-900">{statistics.arl}</div>
-                  <div className="text-sm text-gray-600">平均游程长度</div>
-                  <div className="text-xs text-gray-500 mt-1">稳定性: {statistics.stabilityIndex}%</div>
-                </div>
-                <Activity className="h-8 w-8 text-purple-600" />
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <div className="flex items-center">
+              <Activity className="h-8 w-8 text-purple-600 mr-3" />
+              <div>
+                <div className="text-2xl font-bold text-gray-900">{statistics.arl}</div>
+                <div className="text-sm text-gray-600">平均游程长度</div>
               </div>
             </div>
           </div>
@@ -694,136 +690,60 @@ const EWMAChart: React.FC = () => {
           </div>
         </div>
         
-        {/* 图表信息面板 */}
-        <div className="mb-4 p-3 bg-gray-50 rounded-lg">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-            <div>
-              <span className="text-gray-600">样本数量:</span>
-              <span className="font-medium ml-1">{chartData.length}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">λ参数:</span>
-              <span className="font-medium ml-1">{params.lambda}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">目标值:</span>
-              <span className="font-medium ml-1">{params.target}</span>
-            </div>
-            <div>
-              <span className="text-gray-600">置信水平:</span>
-              <span className="font-medium ml-1">{params.confidenceLevel}%</span>
-            </div>
-          </div>
-        </div>
+
         
-        <div className="h-[600px]">
+        <div className="h-96">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 40, left: 80, bottom: 100 }}>
-              <CartesianGrid strokeDasharray="2 2" stroke="#e5e7eb" opacity={0.7} />
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               
-              {/* 西格玛区域 */}
-              <ReferenceArea
-                y1={params.target - params.sigma}
-                y2={params.target + params.sigma}
-                fill="#dcfce7"
-                fillOpacity={0.3}
-                stroke="none"
+              <XAxis 
+                dataKey="index" 
+                stroke="#6b7280"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
               />
-              <ReferenceArea
-                y1={params.target - 2 * params.sigma}
-                y2={params.target - params.sigma}
-                fill="#fef3c7"
-                fillOpacity={0.3}
-                stroke="none"
+              <YAxis 
+                stroke="#6b7280"
+                fontSize={12}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => value.toFixed(1)}
               />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend />
+              
+              {/* 警告区域 */}
               <ReferenceArea
-                y1={params.target + params.sigma}
-                y2={params.target + 2 * params.sigma}
-                fill="#fef3c7"
-                fillOpacity={0.3}
+                y1={params.target + 2 * params.sigma}
+                y2={params.target + 3 * params.sigma}
+                fill="#fbbf24"
+                fillOpacity={0.2}
                 stroke="none"
               />
               <ReferenceArea
                 y1={params.target - 3 * params.sigma}
                 y2={params.target - 2 * params.sigma}
-                fill="#fee2e2"
-                fillOpacity={0.3}
+                fill="#fbbf24"
+                fillOpacity={0.2}
+                stroke="none"
+              />
+              
+              {/* 危险区域 */}
+              <ReferenceArea
+                y1={params.target + 3 * params.sigma}
+                y2={params.target + 5 * params.sigma}
+                fill="#ef4444"
+                fillOpacity={0.2}
                 stroke="none"
               />
               <ReferenceArea
-                y1={params.target + 2 * params.sigma}
-                y2={params.target + 3 * params.sigma}
-                fill="#fee2e2"
-                fillOpacity={0.3}
+                y1={params.target - 5 * params.sigma}
+                y2={params.target - 3 * params.sigma}
+                fill="#ef4444"
+                fillOpacity={0.2}
                 stroke="none"
-              />
-              
-              <XAxis 
-                dataKey="index" 
-                stroke="#374151"
-                fontSize={12}
-                label={{ 
-                  value: '样本序号', 
-                  position: 'insideBottom', 
-                  offset: -10,
-                  style: { textAnchor: 'middle', fontSize: '14px', fontWeight: 'bold' }
-                }}
-                height={80}
-                tick={{ fontSize: 11, fill: '#374151' }}
-                tickLine={{ stroke: '#9ca3af' }}
-                axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
-              />
-              <YAxis 
-                stroke="#374151"
-                fontSize={12}
-                label={{ 
-                  value: selectedVariable ? `${selectedVariable.name} (${selectedVariable.unit})` : '数值', 
-                  angle: -90, 
-                  position: 'insideLeft',
-                  style: { textAnchor: 'middle', fontSize: '14px', fontWeight: 'bold' }
-                }}
-                width={70}
-                tick={{ fontSize: 11, fill: '#374151' }}
-                tickLine={{ stroke: '#9ca3af' }}
-                axisLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
-                domain={['dataMin - 5', 'dataMax + 5']}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              <Legend 
-                verticalAlign="bottom" 
-                height={50}
-                wrapperStyle={{ paddingTop: '15px', fontSize: '12px' }}
-                iconType="line"
-              />
-              
-              {/* 西格玛参考线 */}
-              <ReferenceLine 
-                y={params.target + params.sigma} 
-                stroke="#10b981" 
-                strokeDasharray="4 2" 
-                strokeWidth={1}
-                opacity={0.6}
-              />
-              <ReferenceLine 
-                y={params.target - params.sigma} 
-                stroke="#10b981" 
-                strokeDasharray="4 2" 
-                strokeWidth={1}
-                opacity={0.6}
-              />
-              <ReferenceLine 
-                y={params.target + 2 * params.sigma} 
-                stroke="#f59e0b" 
-                strokeDasharray="4 2" 
-                strokeWidth={1}
-                opacity={0.6}
-              />
-              <ReferenceLine 
-                y={params.target - 2 * params.sigma} 
-                stroke="#f59e0b" 
-                strokeDasharray="4 2" 
-                strokeWidth={1}
-                opacity={0.6}
               />
               
               {/* 控制限线 */}
@@ -831,332 +751,153 @@ const EWMAChart: React.FC = () => {
                 type="monotone"
                 dataKey="ucl"
                 stroke="#dc2626"
-                strokeWidth={3}
-                strokeDasharray="8 4"
+                strokeWidth={1}
+                strokeDasharray="5 5"
                 dot={false}
                 name="上控制限 (UCL)"
-                opacity={0.9}
               />
               <Line
                 type="monotone"
                 dataKey="lcl"
                 stroke="#dc2626"
-                strokeWidth={3}
-                strokeDasharray="8 4"
+                strokeWidth={1}
+                strokeDasharray="5 5"
                 dot={false}
                 name="下控制限 (LCL)"
-                opacity={0.9}
               />
               
               {/* 中心线 */}
               <Line
                 type="monotone"
                 dataKey="centerLine"
-                stroke="#16a34a"
-                strokeWidth={3}
-                strokeDasharray="12 6"
+                stroke="#059669"
+                strokeWidth={1}
                 dot={false}
                 name="中心线 (目标值)"
-                opacity={0.9}
               />
               
               {/* 原始数据 */}
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke="#9ca3af"
-                strokeWidth={1.5}
+                stroke="#3b82f6"
+                strokeWidth={1}
                 dot={false}
                 name="原始数据"
-                opacity={0.7}
               />
               
               {/* EWMA线 */}
               <Line
                 type="monotone"
                 dataKey="ewma"
-                stroke="#2563eb"
-                strokeWidth={3}
-                dot={(props: any) => {
-                  const { cx, cy, payload, index } = props;
-                  if (!payload) return null;
-                  
-                  // 只在以下情况显示数据点：
-                  // 1. 异常点（超出控制限或违反规则）
-                  // 2. 每10个点显示一个（减少密度）
-                  // 3. 重要的sigma级别点（>2σ）
-                  const shouldShowDot = 
-                    payload.isOutOfControl || 
-                    payload.violationRules.length > 0 || 
-                    index % 10 === 0 || 
-                    payload.sigmaLevel > 2;
-                  
-                  if (!shouldShowDot) return null;
-                  
-                  let fillColor = '#2563eb';
-                  let strokeColor = '#1d4ed8';
-                  let radius = 2;
-                  
-                  if (payload.isOutOfControl || payload.violationRules.length > 0) {
-                    fillColor = '#ef4444';
-                    strokeColor = '#dc2626';
-                    radius = 3;
-                  } else if (payload.sigmaLevel > 2) {
-                    fillColor = '#f59e0b';
-                    strokeColor = '#d97706';
-                    radius = 2.5;
-                  } else if (payload.sigmaLevel > 1) {
-                    fillColor = '#10b981';
-                    strokeColor = '#059669';
-                    radius = 2;
-                  }
-                  
-                  return (
-                    <circle
-                      key={`ewma-dot-${index}`}
-                      cx={cx}
-                      cy={cy}
-                      r={radius}
-                      fill={fillColor}
-                      stroke={strokeColor}
-                      strokeWidth={1}
-                      opacity={0.9}
-                    />
-                  );
-                }}
+                stroke="#dc2626"
+                strokeWidth={2}
+                dot={{ r: 2, fill: "#dc2626" }}
                 name="EWMA值"
               />
             </LineChart>
           </ResponsiveContainer>
         </div>
         
-        {/* 图例说明 */}
-        <div className="mt-4">
-          <div className="flex items-center justify-between mb-2">
-            <h4 className="font-medium text-gray-900">图表说明</h4>
-            <button
-              onClick={() => setShowChartLegend(!showChartLegend)}
-              className="text-sm text-blue-600 hover:text-blue-800 flex items-center"
-            >
-              {showChartLegend ? '收起' : '展开'}
-            </button>
-          </div>
-          
-          {showChartLegend && (
-            <div className="p-4 bg-gray-50 rounded-lg">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-                <div>
-                  <div className="mb-2"><strong>区域颜色:</strong></div>
-                  <div className="space-y-1">
-                    <div className="flex items-center">
-                      <div className="w-4 h-3 bg-green-200 mr-2 rounded"></div>
-                      <span>1σ区域 (68.3%)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-4 h-3 bg-yellow-200 mr-2 rounded"></div>
-                      <span>2σ区域 (95.4%)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-4 h-3 bg-red-200 mr-2 rounded"></div>
-                      <span>3σ区域 (99.7%)</span>
-                    </div>
-                  </div>
-                </div>
-                <div>
-                  <div className="mb-2"><strong>数据点颜色:</strong></div>
-                  <div className="space-y-1">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-blue-600 mr-2 rounded-full"></div>
-                      <span>正常点 (&lt;1σ)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-green-600 mr-2 rounded-full"></div>
-                      <span>注意点 (1-2σ)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-yellow-600 mr-2 rounded-full"></div>
-                      <span>警告点 (2-3σ)</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-red-600 mr-2 rounded-full"></div>
-                      <span>异常点 (&gt;3σ或违反规则)</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+
       </div>
 
       {/* 过程能力分析 */}
       {processCapability && (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-              <Target className="h-5 w-5 text-blue-600 mr-2" />
+            <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+              <BarChart3 className="w-5 h-5 mr-2 text-blue-600" />
               过程能力分析
-            </h3>
+            </h2>
             <button
               onClick={() => setShowCapabilityAnalysis(!showCapabilityAnalysis)}
-              className="text-sm text-blue-600 hover:text-blue-800"
+              className="text-blue-600 hover:text-blue-800 transition-colors"
             >
-              {showCapabilityAnalysis ? '收起' : '展开'}
+              {showCapabilityAnalysis ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
             </button>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-900">{processCapability.cp}</div>
-              <div className="text-sm text-blue-700">Cp</div>
-              <div className="text-xs text-blue-600 mt-1">过程能力</div>
-            </div>
-            
-            <div className="text-center p-4 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-900">{processCapability.cpk}</div>
-              <div className="text-sm text-green-700">Cpk</div>
-              <div className="text-xs text-green-600 mt-1">过程能力指数</div>
-            </div>
-            
-            <div className="text-center p-4 bg-yellow-50 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-900">{processCapability.pp}</div>
-              <div className="text-sm text-yellow-700">Pp</div>
-              <div className="text-xs text-yellow-600 mt-1">过程性能</div>
-            </div>
-            
-            <div className="text-center p-4 bg-orange-50 rounded-lg">
-              <div className="text-2xl font-bold text-orange-900">{processCapability.ppk}</div>
-              <div className="text-sm text-orange-700">Ppk</div>
-              <div className="text-xs text-orange-600 mt-1">过程性能指数</div>
-            </div>
-            
-            <div className="text-center p-4 bg-purple-50 rounded-lg">
-              <div className="text-2xl font-bold text-purple-900">{processCapability.sigma}σ</div>
-              <div className="text-sm text-purple-700">西格玛水平</div>
-              <div className="text-xs text-purple-600 mt-1">质量水平</div>
-            </div>
-          </div>
-          
           {showCapabilityAnalysis && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <h4 className="font-medium text-gray-900 mb-2">能力指数解释</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-700">
-                <div>
-                  <strong>Cp &gt; 1.33:</strong> 过程能力充足<br/>
-                  <strong>1.0 &lt; Cp &lt; 1.33:</strong> 过程能力勉强<br/>
-                  <strong>Cp &lt; 1.0:</strong> 过程能力不足
-                </div>
-                <div>
-                  <strong>Cpk &gt; 1.33:</strong> 过程稳定且居中<br/>
-                  <strong>1.0 &lt; Cpk &lt; 1.33:</strong> 过程需要改进<br/>
-                  <strong>Cpk &lt; 1.0:</strong> 过程严重偏离
-                </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-blue-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-blue-600">{processCapability.cp}</div>
+                <div className="text-sm text-gray-600 mt-1">Cp (潜在能力)</div>
+              </div>
+              <div className="bg-green-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-green-600">{processCapability.cpk}</div>
+                <div className="text-sm text-gray-600 mt-1">Cpk (实际能力)</div>
+              </div>
+              <div className="bg-purple-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-purple-600">{processCapability.pp}</div>
+                <div className="text-sm text-gray-600 mt-1">Pp (总体能力)</div>
+              </div>
+              <div className="bg-orange-50 p-4 rounded-lg text-center">
+                <div className="text-2xl font-bold text-orange-600">{processCapability.ppk}</div>
+                <div className="text-sm text-gray-600 mt-1">Ppk (总体性能)</div>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* 异常检测结果 - 左右两栏布局 */}
+      {/* 趋势分析结果 */}
       {outOfControlPoints.length > 0 && (
         <div className="bg-white rounded-lg shadow-sm p-6">
           <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-            <AlertTriangle className="h-5 w-5 text-red-600 mr-2" />
+            <AlertTriangle className="h-5 w-5 text-orange-600 mr-2" />
             趋势分析结果
           </h2>
           
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* 左栏：检测到的变化点 */}
             <div>
-              <h3 className="text-base font-medium text-gray-900 mb-3">检测到的变化点</h3>
-              <div className="space-y-2">
-                {outOfControlPoints.map((point) => (
-                  <div key={point.index} className="p-3 bg-gray-50 rounded-lg border-l-4 border-red-500">
-                    <div className="flex justify-between items-start">
-                      <div className="flex-1">
-                        <div className="flex items-center space-x-4 text-sm">
-                          <span className="font-medium text-gray-900">样本序号</span>
-                          <span className="font-bold text-red-600">{point.index}</span>
-                        </div>
-                        <div className="mt-1 grid grid-cols-2 gap-2 text-xs text-gray-600">
-                          <div>上限CUSUM: <span className="font-medium">{point.value.toFixed(3)}</span></div>
-                          <div>下限CUSUM: <span className="font-medium">{point.ewma.toFixed(3)}</span></div>
-                        </div>
-                      </div>
-                      <span className={cn(
-                        "inline-flex px-2 py-1 text-xs font-semibold rounded-full",
-                        point.ewma > point.ucl ? "bg-red-100 text-red-800" : "bg-orange-100 text-orange-800"
-                      )}>
-                        {point.ewma > point.ucl ? '趋势变化' : '向上偏移'}
-                      </span>
-                    </div>
-                  </div>
-                ))}
+              <h3 className="font-medium text-gray-900 mb-3">检测到的变化点</h3>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">样本序号</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">EWMA值</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">控制限</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">类型</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {outOfControlPoints.map((point) => (
+                      <tr key={point.index} className="hover:bg-gray-50">
+                        <td className="px-4 py-2 text-sm font-medium text-gray-900">{point.index}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{point.ewma.toFixed(3)}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900">{point.ewma > point.ucl ? point.ucl.toFixed(3) : point.lcl.toFixed(3)}</td>
+                        <td className="px-4 py-2">
+                          <span className="inline-flex px-2 py-1 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                            {point.ewma > point.ucl ? '向上偏移' : point.ewma < point.lcl ? '向下偏移' : '趋势变化'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
             
-            {/* 右栏：分析总结 */}
-            <div className="lg:sticky lg:top-4">
-              <h3 className="text-base font-medium text-gray-900 mb-3">分析总结</h3>
+            <div>
+              <h3 className="font-medium text-gray-900 mb-3">分析总结</h3>
               <div className="space-y-3">
-                {/* 平均游程长度 */}
                 <div className="p-3 bg-blue-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-blue-900">平均游程长度 (ARL)</span>
-                    <span className="text-xl font-bold text-blue-600">{statistics?.arl || '4.7'}</span>
-                  </div>
-                  <p className="text-xs text-blue-700">
-                    较小的ARL表示能更快检测到过程变化
-                  </p>
+                  <div className="text-sm font-medium text-blue-900">平均游程长度 (ARL)</div>
+                  <div className="text-lg font-bold text-blue-600">{statistics?.arl || '4.7'}</div>
+                  <div className="text-xs text-blue-700">较小的ARL表示能更快检测到过程变化</div>
                 </div>
                 
-                {/* 检测效率 */}
                 <div className="p-3 bg-green-50 rounded-lg">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-sm font-medium text-green-900">检测效率</span>
-                    <span className="text-lg font-bold text-green-600">良好</span>
+                  <div className="text-sm font-medium text-green-900">检测效率</div>
+                  <div className="text-lg font-bold text-green-600">
+                    {outOfControlPoints.length > 0 ? '良好' : '优秀'}
                   </div>
-                  <p className="text-xs text-green-700">
-                    检测到{outOfControlPoints.length}处变化
-                  </p>
-                </div>
-                
-                {/* 过程状态评估 */}
-                <div className="p-3 bg-yellow-50 rounded-lg">
-                  <div className="mb-1">
-                    <span className="text-sm font-medium text-yellow-900">过程状态评估</span>
-                  </div>
-                  <div className="space-y-1 text-xs text-yellow-800">
-                    <div>• 检测到 {outOfControlPoints.length} 个异常点</div>
-                    <div>• 失控率: {statistics?.outOfControlRate || '0'}%</div>
-                    <div>• 过程稳定性: {statistics?.stabilityIndex || '100'}%</div>
-                  </div>
-                </div>
-                
-                {/* 建议措施 */}
-                <div className="p-3 bg-orange-50 rounded-lg">
-                  <div className="mb-1">
-                    <span className="text-sm font-medium text-orange-900">建议措施</span>
-                  </div>
-                  <div className="space-y-1 text-xs text-orange-800">
-                    {outOfControlPoints.length > 5 ? (
-                      <>
-                        <div>• 过程存在较多异常，需要调查根本原因</div>
-                        <div>• 建议检查设备状态和操作规程</div>
-                        <div>• 考虑调整控制参数</div>
-                      </>
-                    ) : outOfControlPoints.length > 0 ? (
-                      <>
-                        <div>• 发现少量异常点，需要关注</div>
-                        <div>• 建议分析异常点的共同特征</div>
-                        <div>• 持续监控过程状态</div>
-                      </>
-                    ) : (
-                      <>
-                        <div>• 过程运行稳定</div>
-                        <div>• 继续保持当前控制水平</div>
-                      </>
-                    )}
+                  <div className="text-xs text-green-700">
+                    {outOfControlPoints.length > 0 
+                      ? `检测到${outOfControlPoints.length}次过程变化` 
+                      : '过程稳定，未检测到显著变化'}
                   </div>
                 </div>
               </div>

@@ -415,7 +415,7 @@ const CUSUMChart: React.FC = () => {
                 )}
               >
                 <BarChart3 className="h-4 w-4 mr-2" />
-                选择变量
+                {selectedVariable ? selectedVariable.name : '选择变量'}
               </button>
               
               {showVariableSelector && (
