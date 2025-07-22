@@ -67,7 +67,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {/* 顶部标题区域 */}
-        <div className="relative flex items-center justify-between h-20 px-6 bg-gradient-to-r from-[#1e40af] to-[#3b82f6] shadow-lg">
+        <div className="relative flex items-center justify-between h-16 px-6 bg-gradient-to-r from-[#1e40af] to-[#3b82f6] shadow-lg">
           <div className="flex items-center space-x-3">
             <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
               <BarChart3 className="h-6 w-6 text-white" />
@@ -152,14 +152,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </div>
 
       {/* 主内容区域 */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* 顶部导航栏 */}
         <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-gray-200/50">
-          <div className="flex items-center justify-between h-16 px-6">
+          <div className="flex items-center justify-between h-16 pl-6 pr-6">
             <div className="flex items-center">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="lg:hidden text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg mr-3 transition-all duration-200"
+                className="lg:hidden text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg mr-3 transition-all duration-200 -ml-2"
               >
                 <Menu className="h-5 w-5" />
               </button>
@@ -196,8 +196,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </header>
 
         {/* 页面内容 */}
-        <main className="flex-1 overflow-auto p-6 bg-gradient-to-br from-gray-50/50 to-white">
-          <div className="max-w-full mx-auto">
+        <main className="flex-1 overflow-auto bg-gradient-to-br from-gray-50/50 to-white">
+          <div className="pt-6 pb-6 pl-6 pr-6">
             {children}
           </div>
         </main>
