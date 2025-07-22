@@ -65,10 +65,25 @@ const DataManagement: React.FC = () => {
       const mergedVariables = [...updatedVariables, ...newVariables];
       setAvailableVariables(mergedVariables);
       
-      // 不自动选择变量，让用户手动选择
+      // 自动选择克重变量作为默认变量
       // 如果之前有选中的变量且仍然存在，保持选中状态
-      if (selectedVariable && !mergedVariables.find(v => v.id === selectedVariable.id)) {
-        setSelectedVariable(null);
+      if (selectedVariable && mergedVariables.find(v => v.id === selectedVariable.id)) {
+        // 保持当前选择
+      } else {
+        // 查找克重变量并设为默认选择
+        const gramWeightVariable = mergedVariables.find(v => 
+          v.name.includes('克重') || 
+          v.name.includes('定量') || 
+          v.name.toLowerCase().includes('weight') ||
+          v.name.toLowerCase().includes('gsm')
+        );
+        
+        if (gramWeightVariable) {
+          setSelectedVariable(gramWeightVariable);
+        } else if (mergedVariables.length > 0) {
+          // 如果没有找到克重变量，选择第一个变量
+          setSelectedVariable(mergedVariables[0]);
+        }
       }
       
       // 转换为本地显示格式

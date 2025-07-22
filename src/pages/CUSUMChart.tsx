@@ -118,6 +118,23 @@ const CUSUMChart: React.FC = () => {
     loadDataForSelectedVariable();
   }, [selectedVariable, storeUploadedFile]);
 
+  // 智能默认变量选择
+  useEffect(() => {
+    if (availableVariables.length > 0 && !selectedVariable) {
+      // 查找克重相关变量
+      const weightVariable = availableVariables.find(variable => 
+        variable.name.includes('克重') || 
+        variable.name.includes('定量') ||
+        variable.name.toLowerCase().includes('weight') ||
+        variable.name.toLowerCase().includes('gsm')
+      );
+      
+      // 如果找到克重变量，选择它；否则选择第一个变量
+      const defaultVariable = weightVariable || availableVariables[0];
+      setSelectedVariable(defaultVariable);
+    }
+  }, [availableVariables, selectedVariable, setSelectedVariable]);
+
   // 初始化数据
   useEffect(() => {
     if (!dataInitialized) {
@@ -165,6 +182,42 @@ const CUSUMChart: React.FC = () => {
       }
     }
   }, [storeRawData, dataInitialized, params.target, params.sigma]);
+
+  // 计算智能Y轴范围
+  const calculateYAxisDomain = (data: DataPoint[]) => {
+    if (data.length === 0) return ['dataMin - 5', 'dataMax + 5'];
+    
+    const allValues = data.flatMap(d => [d.cusumHigh, d.cusumLow, params.h, -params.h]);
+    const minValue = Math.min(...allValues);
+    const maxValue = Math.max(...allValues);
+    const range = maxValue - minValue;
+    
+    // 根据数据范围动态调整边距
+    let padding;
+    if (range < 1) {
+      // 小数据范围，使用较大的相对边距
+      padding = range * 0.3;
+    } else if (range < 10) {
+      // 中等数据范围
+      padding = range * 0.2;
+    } else {
+      // 大数据范围，使用较小的相对边距
+      padding = range * 0.1;
+    }
+    
+    // 确保最小边距
+    padding = Math.max(padding, range * 0.05);
+    
+    return [minValue - padding, maxValue + padding];
+  };
+
+  // 计算智能X轴刻度间隔
+  const calculateXAxisInterval = (dataLength: number) => {
+    if (dataLength <= 20) return 0; // 显示所有刻度
+    if (dataLength <= 50) return Math.floor(dataLength / 10);
+    if (dataLength <= 100) return Math.floor(dataLength / 15);
+    return Math.floor(dataLength / 20);
+  };
 
   // 计算CUSUM值
   const chartData = useMemo(() => {
@@ -238,6 +291,51 @@ const CUSUMChart: React.FC = () => {
 
     return data;
   }, [rawData, params]);
+
+  // 计算自适应显示参数
+  const adaptiveParams = useMemo(() => {
+    const yDomain = calculateYAxisDomain(chartData);
+    const xInterval = calculateXAxisInterval(chartData.length);
+    
+    // 根据数据密度调整数据点显示
+    let dotInterval;
+    if (chartData.length <= 50) {
+      dotInterval = 1; // 显示所有点
+    } else if (chartData.length <= 100) {
+      dotInterval = 3; // 每3个点显示一个
+    } else {
+      dotInterval = 5; // 每5个点显示一个
+    }
+    
+    // 根据数据量调整图表高度
+    let chartHeight;
+    if (chartData.length > 100) {
+      chartHeight = 600;
+    } else if (chartData.length > 50) {
+      chartHeight = 550;
+    } else {
+      chartHeight = 500;
+    }
+    
+    // 智能数值格式化精度
+    const range = Math.abs(params.h * 2);
+    let precision;
+    if (range < 1) {
+      precision = 3;
+    } else if (range < 10) {
+      precision = 2;
+    } else {
+      precision = 1;
+    }
+    
+    return {
+      yDomain,
+      xInterval,
+      dotInterval,
+      chartHeight,
+      precision
+    };
+  }, [chartData, params.h]);
 
   // 分析结果
   const analysisResults = useMemo(() => {
@@ -617,9 +715,9 @@ const CUSUMChart: React.FC = () => {
           </div>
         </div>
         
-        <div className="h-96">
+        <div style={{ height: `${adaptiveParams.chartHeight}px` }}>
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 50, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               
               {/* 警告区域 */}
@@ -636,13 +734,15 @@ const CUSUMChart: React.FC = () => {
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
+                interval={adaptiveParams.xInterval}
               />
               <YAxis 
                 stroke="#6b7280"
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={(value) => value.toFixed(1)}
+                domain={adaptiveParams.yDomain}
+                tickFormatter={(value) => value.toFixed(adaptiveParams.precision)}
               />
               <Tooltip content={<CustomTooltip />} />
               <Legend />
@@ -657,31 +757,40 @@ const CUSUMChart: React.FC = () => {
                 type="monotone" 
                 dataKey="cusumHigh" 
                 stroke="#059669" 
-                strokeWidth={2}
+                strokeWidth={chartData.length > 100 ? 1.5 : 2}
+                strokeOpacity={chartData.length > 100 ? 0.8 : 1}
                 name="上侧CUSUM"
                 dot={(props: any) => {
-                  const { cx, cy, payload } = props;
+                  const { cx, cy, payload, index } = props;
                   if (!payload) return null;
                   
+                  // 根据自适应参数决定是否显示数据点
+                  const shouldShowDot = payload.isOutOfControl || 
+                                       payload.changePoint || 
+                                       payload.signalStrength === 'high' ||
+                                       (index % adaptiveParams.dotInterval === 0);
+                  
+                  if (!shouldShowDot) return null;
+                  
                   let color = '#059669';
-                  let size = 2;
+                  let size = chartData.length > 100 ? 1.5 : 2;
                   
                   if (payload.isOutOfControl) {
                     color = '#dc2626';
-                    size = 3;
+                    size = chartData.length > 100 ? 2.5 : 3;
                   } else if (payload.signalStrength === 'high') {
                     color = '#d97706';
-                    size = 2.5;
+                    size = chartData.length > 100 ? 2 : 2.5;
                   } else if (payload.signalStrength === 'medium') {
                     color = '#059669';
-                    size = 2;
+                    size = chartData.length > 100 ? 1.5 : 2;
                   }
                   
                   if (payload.changePoint) {
                     return <circle cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
                   }
                   
-                  return <circle cx={cx} cy={cy} r={size} fill={color} />;
+                  return <circle cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
                 }}
               />
               
@@ -691,31 +800,40 @@ const CUSUMChart: React.FC = () => {
                   type="monotone" 
                   dataKey="cusumLow" 
                   stroke="#dc2626" 
-                  strokeWidth={2}
+                  strokeWidth={chartData.length > 100 ? 1.5 : 2}
+                  strokeOpacity={chartData.length > 100 ? 0.8 : 1}
                   name="下侧CUSUM"
                   dot={(props: any) => {
-                    const { cx, cy, payload } = props;
+                    const { cx, cy, payload, index } = props;
                     if (!payload) return null;
                     
+                    // 根据自适应参数决定是否显示数据点
+                    const shouldShowDot = payload.isOutOfControl || 
+                                         payload.changePoint || 
+                                         payload.signalStrength === 'high' ||
+                                         (index % adaptiveParams.dotInterval === 0);
+                    
+                    if (!shouldShowDot) return null;
+                    
                     let color = '#dc2626';
-                    let size = 2;
+                    let size = chartData.length > 100 ? 1.5 : 2;
                     
                     if (payload.isOutOfControl) {
                       color = '#dc2626';
-                      size = 3;
+                      size = chartData.length > 100 ? 2.5 : 3;
                     } else if (payload.signalStrength === 'high') {
                       color = '#d97706';
-                      size = 2.5;
+                      size = chartData.length > 100 ? 2 : 2.5;
                     } else if (payload.signalStrength === 'medium') {
                       color = '#dc2626';
-                      size = 2;
+                      size = chartData.length > 100 ? 1.5 : 2;
                     }
                     
                     if (payload.changePoint) {
                       return <circle cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
                     }
                     
-                    return <circle cx={cx} cy={cy} r={size} fill={color} />;
+                    return <circle cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
                   }}
                 />
               )}
