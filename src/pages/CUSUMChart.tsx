@@ -10,7 +10,9 @@ interface DataPoint {
   index: number;
   value: number;
   cusumHigh: number;
+  cusumHighOutOfControl?: number; // 只有超限时才有值
   cusumLow: number;
+  cusumLowOutOfControl?: number; // 只有超限时才有值
   upperLimit: number;
   lowerLimit: number;
   isOutOfControl: boolean;
@@ -277,7 +279,9 @@ const CUSUMChart: React.FC = () => {
         index: i + 1,
         value: rawData[i],
         cusumHigh,
+        cusumHighOutOfControl: cusumHigh > params.h ? cusumHigh : undefined, // 只有超限时才设置值
         cusumLow,
+        cusumLowOutOfControl: cusumLow < -params.h ? cusumLow : undefined, // 只有超限时才设置值
         upperLimit: params.h,
         lowerLimit: -params.h,
         isOutOfControl,
@@ -746,19 +750,44 @@ const CUSUMChart: React.FC = () => {
               <ReferenceLine y={-params.h} stroke="#dc2626" strokeDasharray="5 5" strokeWidth={2} />
               <ReferenceLine y={0} stroke="#374151" strokeWidth={1} />
               
-              {/* 上侧CUSUM */}
+              {/* 上侧CUSUM - 正常部分 */}
               <Line 
                 type="monotone" 
                 dataKey="cusumHigh" 
-                stroke="#059669" 
+                stroke="#3b82f6" 
                 strokeWidth={chartData.length > 100 ? 1.5 : 2}
                 strokeOpacity={chartData.length > 100 ? 0.8 : 1}
-                name="上侧CUSUM"
+                name="上侧CUSUM(正常)"
                 dot={(props: any) => {
                   const { cx, cy, payload, index } = props;
                   if (!payload) return null;
                   
-                  // 根据自适应参数决定是否显示数据点
+                  // 只在正常范围内显示蓝色点
+                  const isOutOfControl = payload.cusumHigh > params.h;
+                  if (isOutOfControl) return null;
+                  
+                  const shouldShowDot = index % adaptiveParams.dotInterval === 0;
+                  const size = chartData.length > 100 ? 1.5 : 2;
+                  
+                  return shouldShowDot ? 
+                    <circle key={`cusum-high-normal-${index}`} cx={cx} cy={cy} r={size} fill="#3b82f6" stroke="#fff" strokeWidth={0.5} /> : 
+                    null;
+                }}
+                connectNulls={false}
+              />
+              
+              {/* 上侧CUSUM - 超限部分 */}
+              <Line 
+                type="monotone" 
+                dataKey="cusumHighOutOfControl" 
+                stroke="#dc2626" 
+                strokeWidth={chartData.length > 100 ? 1.5 : 2}
+                strokeOpacity={chartData.length > 100 ? 0.8 : 1}
+                name="上侧CUSUM(超限)"
+                dot={(props: any) => {
+                  const { cx, cy, payload, index } = props;
+                  if (!payload || !payload.cusumHighOutOfControl) return null;
+                  
                   const shouldShowDot = payload.isOutOfControl || 
                                        payload.changePoint || 
                                        payload.signalStrength === 'high' ||
@@ -766,42 +795,58 @@ const CUSUMChart: React.FC = () => {
                   
                   if (!shouldShowDot) return null;
                   
-                  let color = '#059669';
-                  let size = chartData.length > 100 ? 1.5 : 2;
-                  
-                  if (payload.isOutOfControl) {
-                    color = '#dc2626';
-                    size = chartData.length > 100 ? 2.5 : 3;
-                  } else if (payload.signalStrength === 'high') {
-                    color = '#d97706';
-                    size = chartData.length > 100 ? 2 : 2.5;
-                  } else if (payload.signalStrength === 'medium') {
-                    color = '#059669';
-                    size = chartData.length > 100 ? 1.5 : 2;
-                  }
+                  let size = chartData.length > 100 ? 2.5 : 3;
                   
                   if (payload.changePoint) {
-                    return <circle key={`cusum-high-${index}`} cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
+                    return <circle key={`cusum-high-out-${index}`} cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
                   }
                   
-                  return <circle key={`cusum-high-${index}`} cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
+                  return <circle key={`cusum-high-out-${index}`} cx={cx} cy={cy} r={size} fill="#dc2626" stroke="#fff" strokeWidth={0.5} />;
                 }}
+                connectNulls={false}
               />
               
-              {/* 下侧CUSUM */}
+              {/* 下侧CUSUM - 正常部分 */}
               {showBothSides && (
                 <Line 
                   type="monotone" 
                   dataKey="cusumLow" 
-                  stroke="#dc2626" 
+                  stroke="#10b981" 
                   strokeWidth={chartData.length > 100 ? 1.5 : 2}
                   strokeOpacity={chartData.length > 100 ? 0.8 : 1}
-                  name="下侧CUSUM"
+                  name="下侧CUSUM(正常)"
                   dot={(props: any) => {
                     const { cx, cy, payload, index } = props;
                     if (!payload) return null;
                     
-                    // 根据自适应参数决定是否显示数据点
+                    // 只在正常范围内显示绿色点
+                    const isOutOfControl = payload.cusumLow < -params.h;
+                    if (isOutOfControl) return null;
+                    
+                    const shouldShowDot = index % adaptiveParams.dotInterval === 0;
+                    const size = chartData.length > 100 ? 1.5 : 2;
+                    
+                    return shouldShowDot ? 
+                      <circle key={`cusum-low-normal-${index}`} cx={cx} cy={cy} r={size} fill="#10b981" stroke="#fff" strokeWidth={0.5} /> : 
+                      null;
+                  }}
+                  connectNulls={false}
+                />
+              )}
+              
+              {/* 下侧CUSUM - 超限部分 */}
+              {showBothSides && (
+                <Line 
+                  type="monotone" 
+                  dataKey="cusumLowOutOfControl" 
+                  stroke="#dc2626" 
+                  strokeWidth={chartData.length > 100 ? 1.5 : 2}
+                  strokeOpacity={chartData.length > 100 ? 0.8 : 1}
+                  name="下侧CUSUM(超限)"
+                  dot={(props: any) => {
+                    const { cx, cy, payload, index } = props;
+                    if (!payload || !payload.cusumLowOutOfControl) return null;
+                    
                     const shouldShowDot = payload.isOutOfControl || 
                                          payload.changePoint || 
                                          payload.signalStrength === 'high' ||
@@ -809,26 +854,15 @@ const CUSUMChart: React.FC = () => {
                     
                     if (!shouldShowDot) return null;
                     
-                    let color = '#dc2626';
-                    let size = chartData.length > 100 ? 1.5 : 2;
-                    
-                    if (payload.isOutOfControl) {
-                      color = '#dc2626';
-                      size = chartData.length > 100 ? 2.5 : 3;
-                    } else if (payload.signalStrength === 'high') {
-                      color = '#d97706';
-                      size = chartData.length > 100 ? 2 : 2.5;
-                    } else if (payload.signalStrength === 'medium') {
-                      color = '#dc2626';
-                      size = chartData.length > 100 ? 1.5 : 2;
-                    }
+                    let size = chartData.length > 100 ? 2.5 : 3;
                     
                     if (payload.changePoint) {
-                      return <circle key={`cusum-low-${index}`} cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
+                      return <circle key={`cusum-low-out-${index}`} cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
                     }
                     
-                    return <circle key={`cusum-low-${index}`} cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
+                    return <circle key={`cusum-low-out-${index}`} cx={cx} cy={cy} r={size} fill="#dc2626" stroke="#fff" strokeWidth={0.5} />;
                   }}
+                  connectNulls={false}
                 />
               )}
             </LineChart>

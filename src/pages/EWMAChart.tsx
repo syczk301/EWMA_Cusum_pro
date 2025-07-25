@@ -10,6 +10,7 @@ interface DataPoint {
   index: number;
   value: number;
   ewma: number;
+  ewmaOutOfControl?: number; // 只有超限时才有值
   ucl: number;
   lcl: number;
   centerLine: number;
@@ -302,6 +303,7 @@ const EWMAChart: React.FC = () => {
         index: i + 1,
         value: rawData[i],
         ewma,
+        ewmaOutOfControl: isOutOfControl ? ewma : undefined, // 只有超限时才设置值
         ucl,
         lcl,
         centerLine: params.target,
@@ -827,26 +829,51 @@ const EWMAChart: React.FC = () => {
                 name="原始数据"
               />
               
-              {/* EWMA线 */}
+              {/* EWMA线 - 正常部分 */}
               <Line
                 type="monotone"
                 dataKey="ewma"
-                stroke="#dc2626"
+                stroke="#3b82f6"
                 strokeWidth={2}
                 dot={(props) => {
-                  const { index } = props;
-                  // 使用自适应的点间隔或异常点显示数据点
-                  const shouldShowDot = index % adaptiveParams.dotInterval === 0 || 
-                    outOfControlPoints.some(point => point.index === index + 1);
+                  const { index, payload } = props;
+                  if (!payload) return null;
                   
-                  // 根据数据密度调整点的大小
+                  // 只在正常范围内显示蓝色点
+                  const isOutOfControl = payload.ewma > payload.ucl || payload.ewma < payload.lcl;
+                  if (isOutOfControl) return null;
+                  
+                  const shouldShowDot = index % adaptiveParams.dotInterval === 0;
                   const dotSize = chartData.length > 100 ? 2 : 3;
                   
                   return shouldShowDot ? 
-                    <circle key={`ewma-${index}`} cx={props.cx} cy={props.cy} r={dotSize} fill="#dc2626" stroke="#fff" strokeWidth={1} /> : 
+                    <circle key={`ewma-normal-${index}`} cx={props.cx} cy={props.cy} r={dotSize} fill="#3b82f6" stroke="#fff" strokeWidth={1} /> : 
                     null;
                 }}
-                name="EWMA值"
+                name="EWMA值(正常)"
+                connectNulls={false}
+              />
+              
+              {/* EWMA线 - 超限部分 */}
+              <Line
+                type="monotone"
+                dataKey="ewmaOutOfControl"
+                stroke="#dc2626"
+                strokeWidth={2}
+                dot={(props) => {
+                  const { index, payload } = props;
+                  if (!payload || !payload.ewmaOutOfControl) return null;
+                  
+                  const shouldShowDot = index % adaptiveParams.dotInterval === 0 || 
+                    outOfControlPoints.some(point => point.index === index + 1);
+                  const dotSize = chartData.length > 100 ? 2 : 3;
+                  
+                  return shouldShowDot ? 
+                    <circle key={`ewma-out-${index}`} cx={props.cx} cy={props.cy} r={dotSize} fill="#dc2626" stroke="#fff" strokeWidth={1} /> : 
+                    null;
+                }}
+                name="EWMA值(超限)"
+                connectNulls={false}
               />
             </LineChart>
           </ResponsiveContainer>
