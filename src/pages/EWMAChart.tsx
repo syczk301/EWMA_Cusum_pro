@@ -784,37 +784,7 @@ const EWMAChart: React.FC = () => {
               <Tooltip content={<CustomTooltip />} />
               <Legend />
               
-              {/* 警告区域 */}
-              <ReferenceArea
-                y1={params.target + 2 * params.sigma}
-                y2={params.target + 3 * params.sigma}
-                fill="#fbbf24"
-                fillOpacity={0.2}
-                stroke="none"
-              />
-              <ReferenceArea
-                y1={params.target - 3 * params.sigma}
-                y2={params.target - 2 * params.sigma}
-                fill="#fbbf24"
-                fillOpacity={0.2}
-                stroke="none"
-              />
-              
-              {/* 危险区域 */}
-              <ReferenceArea
-                y1={params.target + 3 * params.sigma}
-                y2={params.target + 5 * params.sigma}
-                fill="#ef4444"
-                fillOpacity={0.2}
-                stroke="none"
-              />
-              <ReferenceArea
-                y1={params.target - 5 * params.sigma}
-                y2={params.target - 3 * params.sigma}
-                fill="#ef4444"
-                fillOpacity={0.2}
-                stroke="none"
-              />
+              {/* 警告区域和危险区域已取消 */}
               
               {/* 控制限线 */}
               <Line
@@ -873,7 +843,7 @@ const EWMAChart: React.FC = () => {
                   const dotSize = chartData.length > 100 ? 2 : 3;
                   
                   return shouldShowDot ? 
-                    <circle cx={props.cx} cy={props.cy} r={dotSize} fill="#dc2626" stroke="#fff" strokeWidth={1} /> : 
+                    <circle key={`ewma-${index}`} cx={props.cx} cy={props.cy} r={dotSize} fill="#dc2626" stroke="#fff" strokeWidth={1} /> : 
                     null;
                 }}
                 name="EWMA值"

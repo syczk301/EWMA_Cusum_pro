@@ -720,13 +720,7 @@ const CUSUMChart: React.FC = () => {
             <LineChart data={chartData} margin={{ top: 20, right: 30, left: 50, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
               
-              {/* 警告区域 */}
-              <ReferenceArea y1={params.h * 0.5} y2={params.h} fill="#fef3c7" fillOpacity={0.3} />
-              <ReferenceArea y1={-params.h} y2={-params.h * 0.5} fill="#fef3c7" fillOpacity={0.3} />
-              
-              {/* 危险区域 */}
-              <ReferenceArea y1={params.h} y2={params.h * 1.5} fill="#fecaca" fillOpacity={0.3} />
-              <ReferenceArea y1={-params.h * 1.5} y2={-params.h} fill="#fecaca" fillOpacity={0.3} />
+              {/* 警告区域和危险区域已取消 */}
               
               <XAxis 
                 dataKey="index" 
@@ -787,10 +781,10 @@ const CUSUMChart: React.FC = () => {
                   }
                   
                   if (payload.changePoint) {
-                    return <circle cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
+                    return <circle key={`cusum-high-${index}`} cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
                   }
                   
-                  return <circle cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
+                  return <circle key={`cusum-high-${index}`} cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
                 }}
               />
               
@@ -830,10 +824,10 @@ const CUSUMChart: React.FC = () => {
                     }
                     
                     if (payload.changePoint) {
-                      return <circle cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
+                      return <circle key={`cusum-low-${index}`} cx={cx} cy={cy} r={size + 1} fill="#ea580c" stroke="#fff" strokeWidth={1} />;
                     }
                     
-                    return <circle cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
+                    return <circle key={`cusum-low-${index}`} cx={cx} cy={cy} r={size} fill={color} stroke="#fff" strokeWidth={0.5} />;
                   }}
                 />
               )}
