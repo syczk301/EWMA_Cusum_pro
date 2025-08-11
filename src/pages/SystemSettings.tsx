@@ -64,7 +64,7 @@ const SystemSettings: React.FC = () => {
 
   // 系统配置
   const [systemConfig, setSystemConfig] = useState({
-    companyName: '成纸质量管理系统',
+    companyName: '造纸质检数据质量控制系统',
     systemVersion: 'v1.0.0',
     maxUsers: 50,
     sessionTimeout: 30,

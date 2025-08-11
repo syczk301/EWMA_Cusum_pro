@@ -67,19 +67,18 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         sidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         {/* 顶部标题区域 */}
-        <div className="relative flex items-center justify-between h-16 px-6 bg-gradient-to-r from-[#1e40af] to-[#3b82f6] shadow-lg">
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center backdrop-blur-sm">
-              <BarChart3 className="h-6 w-6 text-white" />
+        <div className="relative flex items-center justify-center h-20 px-4 bg-gradient-to-r from-[#1e40af] to-[#3b82f6] shadow-lg">
+            <div className="flex flex-col items-center justify-center text-center">
+              <div className="w-9 h-9 aspect-square bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm shrink-0">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <h1 className="mt-1 text-[15px] font-bold text-white tracking-wide leading-tight">
+                造纸质检数据质量控制系统
+              </h1>
             </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-wide">SPC质量管理</h1>
-              <p className="text-xs text-blue-100 opacity-90">Statistical Process Control</p>
-            </div>
-          </div>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200"
+            className="lg:hidden absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white hover:bg-white/10 p-2 rounded-lg transition-all duration-200"
           >
             <X className="h-5 w-5" />
           </button>
@@ -154,31 +153,21 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       {/* 主内容区域 */}
       <div className="flex-1 flex flex-col overflow-hidden min-w-0">
         {/* 顶部导航栏 */}
-        <header className="bg-white/80 backdrop-blur-md shadow-lg border-b border-gray-200/50">
-          <div className="flex items-center justify-between h-16 pl-6 pr-6">
-            <div className="flex items-center">
-              <button
-                onClick={() => setSidebarOpen(true)}
-                className="lg:hidden text-gray-600 hover:text-gray-900 hover:bg-gray-100 p-2 rounded-lg mr-3 transition-all duration-200 -ml-2"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
+        <header className="relative bg-white/80 backdrop-blur-md shadow-lg border-b border-gray-200/50">
+          <div className="relative h-20 pl-6 pr-6">
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="flex items-center space-x-3 h-10">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center shadow-md">
-                <span className="text-white text-xs font-bold">SPC</span>
-              </div>
-              <div className="flex flex-col justify-center h-10">
-                <h2 className="text-lg font-bold text-gray-900 tracking-wide leading-none">
-                  {menuItems.find(item => item.path === location.pathname)?.label || '成纸质量管理系统'}
+                <div className="w-8 h-8 aspect-square bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-md">
+                  <BarChart3 className="h-4 w-4 text-white" />
+                </div>
+                <h2 className="text-lg font-bold text-gray-900 tracking-wide leading-none truncate max-w-[70vw]">
+                  {menuItems.find(item => item.path === location.pathname)?.label || '造纸质检数据质量控制系统'}
                 </h2>
-                <p className="text-xs text-gray-500 leading-none mt-0.5">
-                  {menuItems.find(item => item.path === location.pathname)?.description || '统计过程控制系统'}
-                </p>
               </div>
             </div>
-            </div>
+          </div>
             
-            <div className="flex items-center space-x-4 h-10">
+            <div className="hidden lg:flex items-center space-x-4 h-10 absolute right-6 top-1/2 -translate-y-1/2">
               <div className="hidden sm:flex items-center space-x-2 px-3 py-2 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100 h-full">
                 <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
                 <div className="text-sm text-gray-700 font-medium">
@@ -192,7 +181,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="absolute top-full right-0 mt-2 w-2 h-2 bg-green-400 rounded-full border-2 border-white shadow-sm"></div>
               </div>
             </div>
-          </div>
         </header>
 
         {/* 页面内容 */}
